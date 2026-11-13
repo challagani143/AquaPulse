@@ -1,0 +1,6 @@
+{
+  "name": "AquaPulse",
+  "description": "Daily water intake tracker with hydration goals, analytics, and scheduled reminder notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

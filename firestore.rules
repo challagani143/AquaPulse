@@ -1,0 +1,168 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.dailyGoalMl is int &&
+             data.dailyGoalMl >= 500 &&
+             data.dailyGoalMl <= 10000 &&
+             data.preferredUnit is string &&
+             data.preferredUnit in ['ml', 'oz'] &&
+             data.notificationsEnabled is bool &&
+             data.reminderIntervalMinutes is int &&
+             data.reminderIntervalMinutes >= 30 &&
+             data.reminderIntervalMinutes <= 480 &&
+             data.wakeHour is int &&
+             data.wakeHour >= 0 &&
+             data.wakeHour <= 23 &&
+             data.sleepHour is int &&
+             data.sleepHour >= 0 &&
+             data.sleepHour <= 23 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidWaterLog(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.amountMl is int &&
+             data.amountMl >= 10 &&
+             data.amountMl <= 5000 &&
+             data.drinkType is string &&
+             data.drinkType in ['water', 'sparkling', 'tea', 'electrolytes', 'coffee'] &&
+             data.dateKey is string &&
+             data.dateKey.size() == 10 &&
+             data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             data.loggedAtMillis is int &&
+             data.loggedAtMillis >= 0 &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 80)) &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId',
+                         'dailyGoalMl',
+                         'preferredUnit',
+                         'notificationsEnabled',
+                         'reminderIntervalMinutes',
+                         'wakeHour',
+                         'sleepHour',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId',
+                         'dailyGoalMl',
+                         'preferredUnit',
+                         'notificationsEnabled',
+                         'reminderIntervalMinutes',
+                         'wakeHour',
+                         'sleepHour',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'dailyGoalMl',
+                         'preferredUnit',
+                         'notificationsEnabled',
+                         'reminderIntervalMinutes',
+                         'wakeHour',
+                         'sleepHour',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+
+      match /water_logs/{logId} {
+        allow get: if isSignedIn() && request.auth.uid == userId && isValidId(logId);
+        allow list: if isSignedIn() && request.auth.uid == userId;
+
+        allow create: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(logId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll([
+                           'userId',
+                           'amountMl',
+                           'drinkType',
+                           'dateKey',
+                           'loggedAtMillis',
+                           'createdAt',
+                           'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId',
+                           'amountMl',
+                           'drinkType',
+                           'dateKey',
+                           'loggedAtMillis',
+                           'note',
+                           'createdAt',
+                           'updatedAt'
+                         ]) &&
+                         isValidWaterLog(incoming(), userId);
+
+        allow update: if isSignedIn() &&
+                         request.auth.uid == userId &&
+                         isValidId(logId) &&
+                         isValidWaterLog(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'amountMl',
+                           'drinkType',
+                           'dateKey',
+                           'loggedAtMillis',
+                           'note',
+                           'updatedAt'
+                         ]);
+
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(logId);
+      }
+    }
+  }
+}

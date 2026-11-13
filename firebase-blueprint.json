@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User hydration goal, unit preference, and push reminder schedule settings.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID owning this hydration profile."
+        },
+        "dailyGoalMl": {
+          "type": "integer",
+          "description": "Daily hydration target in milliliters (500 to 10000)."
+        },
+        "preferredUnit": {
+          "type": "string",
+          "enum": ["ml", "oz"],
+          "description": "Display unit preference for volume formatting."
+        },
+        "notificationsEnabled": {
+          "type": "boolean",
+          "description": "Whether scheduled hydration reminder notifications are enabled."
+        },
+        "reminderIntervalMinutes": {
+          "type": "integer",
+          "description": "Interval between hydration reminders in minutes (30 to 480)."
+        },
+        "wakeHour": {
+          "type": "integer",
+          "description": "Start hour (0-23) for active hydration reminders."
+        },
+        "sleepHour": {
+          "type": "integer",
+          "description": "End hour (0-23) for active hydration reminders."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "dailyGoalMl",
+        "preferredUnit",
+        "notificationsEnabled",
+        "reminderIntervalMinutes",
+        "wakeHour",
+        "sleepHour",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WaterLog": {
+      "title": "WaterLog",
+      "description": "An individual hydration intake entry logged by the user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID owning this log entry."
+        },
+        "amountMl": {
+          "type": "integer",
+          "description": "Volume of beverage consumed in milliliters (10 to 5000)."
+        },
+        "drinkType": {
+          "type": "string",
+          "enum": ["water", "sparkling", "tea", "electrolytes", "coffee"],
+          "description": "Type of beverage logged."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Local calendar date key in YYYY-MM-DD format."
+        },
+        "loggedAtMillis": {
+          "type": "integer",
+          "description": "Client epoch timestamp in milliseconds when the drink was logged."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional short note or container label (max 80 characters)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when entry was created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when entry was last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "amountMl",
+        "drinkType",
+        "dateKey",
+        "loggedAtMillis",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores each user's hydration goals and reminder preferences."
+    },
+    "/users/{userId}/water_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/WaterLog"
+      },
+      "description": "Stores timestamped hydration intake entries for each user."
+    }
+  }
+}
